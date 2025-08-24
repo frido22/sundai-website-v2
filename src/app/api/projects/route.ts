@@ -43,9 +43,10 @@ export async function GET(req: Request) {
         },
         techTags: true,
         domainTags: true,
-        likes: {
+        votes: {
           select: {
             hackerId: true,
+            voteType: true,
             createdAt: true,
           },
         },
@@ -63,9 +64,10 @@ export async function GET(req: Request) {
     return NextResponse.json(
       projects.map((project) => ({
         ...project,
-        likes: project.likes.map((like) => ({
-          hackerId: like.hackerId,
-          createdAt: like.createdAt,
+        votes: project.votes.map((vote) => ({
+          hackerId: vote.hackerId,
+          voteType: vote.voteType,
+          createdAt: vote.createdAt,
         })),
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),

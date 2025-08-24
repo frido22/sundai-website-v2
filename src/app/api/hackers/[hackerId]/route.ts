@@ -14,7 +14,7 @@ export async function GET(
         ledProjects: {
           include: {
             thumbnail: true,
-            likes: true,
+            votes: true,
           },
           orderBy: {
             createdAt: "desc",
@@ -25,7 +25,7 @@ export async function GET(
             project: {
               include: {
                 thumbnail: true,
-                likes: true,
+                votes: true,
               },
             },
           },
@@ -33,7 +33,7 @@ export async function GET(
             createdAt: "desc",
           },
         },
-        likes: {
+        votes: {
           include: {
             project: {
               include: {
@@ -43,7 +43,7 @@ export async function GET(
                     avatar: true,
                   },
                 },
-                likes: true,
+                votes: true,
               },
             },
           },
@@ -60,14 +60,15 @@ export async function GET(
 
     const transformedHacker = {
       ...hacker,
-      likedProjects: hacker.likes.map((like) => ({
-        createdAt: like.createdAt,
-        project: like.project,
+      votedProjects: hacker.votes.map((vote) => ({
+        createdAt: vote.createdAt,
+        voteType: vote.voteType,
+        project: vote.project,
       })),
     };
 
-    if (transformedHacker.likes) {
-      delete (transformedHacker as any).likes;
+    if (transformedHacker.votes) {
+      delete (transformedHacker as any).votes;
     }
 
     return NextResponse.json(transformedHacker);
@@ -143,7 +144,7 @@ export async function PATCH(
             project: {
               include: {
                 thumbnail: true,
-                likes: true,
+                votes: true,
               },
             },
           },
@@ -151,7 +152,7 @@ export async function PATCH(
             createdAt: "desc",
           },
         },
-        likes: {
+        votes: {
           include: {
             project: {
               include: {

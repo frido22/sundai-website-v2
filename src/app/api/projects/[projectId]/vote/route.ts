@@ -13,6 +13,13 @@ export async function POST(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const body = await req.json();
+    const { voteType } = body;
+
+    if (!voteType || !['UPVOTE', 'DOWNVOTE'].includes(voteType)) {
+      return new NextResponse("Invalid vote type", { status: 400 });
+    }
+
     // Get the hacker using clerkId
     const hacker = await prisma.hacker.findUnique({
       where: { clerkId },
@@ -22,8 +29,8 @@ export async function POST(
       return new NextResponse("Hacker not found", { status: 404 });
     }
 
-    // Check if like already exists
-    const existingLike = await prisma.projectLike.findUnique({
+    // Check if vote already exists
+    const existingVote = await prisma.projectVote.findUnique({
       where: {
         projectId_hackerId: {
           projectId: params.projectId,
@@ -32,21 +39,34 @@ export async function POST(
       },
     });
 
-    if (existingLike) {
-      return NextResponse.json(existingLike);
+    if (existingVote) {
+      // Update existing vote
+      const updatedVote = await prisma.projectVote.update({
+        where: {
+          projectId_hackerId: {
+            projectId: params.projectId,
+            hackerId: hacker.id,
+          },
+        },
+        data: {
+          voteType,
+        },
+      });
+      return NextResponse.json(updatedVote);
     }
 
-    // Create new like
-    const like = await prisma.projectLike.create({
+    // Create new vote
+    const vote = await prisma.projectVote.create({
       data: {
         projectId: params.projectId,
         hackerId: hacker.id,
+        voteType,
       },
     });
 
-    return NextResponse.json(like);
+    return NextResponse.json(vote);
   } catch (error) {
-    console.error("[PROJECT_LIKE]", error);
+    console.error("[PROJECT_VOTE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
@@ -71,8 +91,8 @@ export async function DELETE(
       return new NextResponse("Hacker not found", { status: 404 });
     }
 
-    // Delete like
-    await prisma.projectLike.delete({
+    // Delete vote
+    await prisma.projectVote.delete({
       where: {
         projectId_hackerId: {
           projectId: params.projectId,
@@ -83,7 +103,7 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error("[PROJECT_UNLIKE]", error);
+    console.error("[PROJECT_UNVOTE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

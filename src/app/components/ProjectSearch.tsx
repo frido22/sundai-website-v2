@@ -31,9 +31,13 @@ const SORT_OPTIONS: SortOption[] = [
     }
   },
   {
-    label: "Most Liked",
-    value: "likes",
-    sortFn: (a: Project, b: Project) => (b.likes?.length || 0) - (a.likes?.length || 0)
+    label: "Highest Rated",
+    value: "votes",
+    sortFn: (a: Project, b: Project) => {
+      const netScoreA = (a.votes?.filter(v => v.voteType === "UPVOTE").length || 0) - (a.votes?.filter(v => v.voteType === "DOWNVOTE").length || 0);
+      const netScoreB = (b.votes?.filter(v => v.voteType === "UPVOTE").length || 0) - (b.votes?.filter(v => v.voteType === "DOWNVOTE").length || 0);
+      return netScoreB - netScoreA;
+    }
   },
   {
     label: "Recently Updated",

@@ -33,7 +33,7 @@ model Hacker {
   projects    ProjectToParticipant[]
   ledProjects Project[] @relation("LaunchLead")
   images      Image[]   @relation("HackerImages")
-  likes       ProjectLike[]
+  votes       ProjectVote[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   pushSubscriptions PushSubscription[]
@@ -86,7 +86,7 @@ model Project {
   endDate     DateTime?
   status      ProjectStatus @default(PENDING)
   hack_type   HackType? @default(REGULAR)
-  likes       ProjectLike[]
+  votes       ProjectVote[]
   weeks       Week[]    // Many-to-many as projects can span multiple weeks
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -141,13 +141,15 @@ model Image {
   @@index([projectId])
 }
 
-model ProjectLike {
+model ProjectVote {
   id        String   @id @default(uuid())
   project   Project  @relation(fields: [projectId], references: [id])
   projectId String
   hacker    Hacker   @relation(fields: [hackerId], references: [id])
   hackerId  String
+  voteType  VoteType
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([projectId, hackerId])
   @@index([projectId])
@@ -167,7 +169,7 @@ model PushSubscription {
   // Notification preferences
   notifyNewProjects     Boolean   @default(true)
   notifyProjectUpdates  Boolean   @default(true)
-  notifyLikes          Boolean   @default(true)
+  notifyVotes          Boolean   @default(true)
   notifyNewMembers     Boolean   @default(true)
 
   @@index([hackerId])
@@ -245,9 +247,14 @@ enum ProjectStatus {
 enum NotificationType {
   NEW_PROJECT
   PROJECT_UPDATE
-  NEW_LIKE
+  NEW_VOTE
   NEW_MEMBER
   CUSTOM
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
 }
 
 enum HackType {

@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { HeartIcon } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartIconSolid } from "@heroicons/react/24/solid";
+import VoteButtons from "./VoteButtons";
 import { useUserContext } from "../contexts/UserContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { Listbox, Transition } from '@headlessui/react';
@@ -61,8 +60,9 @@ export type Project = {
   }>;
   startDate: Date;
   endDate?: Date | null;
-  likes: Array<{
+  votes: Array<{
     hackerId: string;
+    voteType: "UPVOTE" | "DOWNVOTE";
     createdAt: string;
   }>;
   createdAt: string;
@@ -71,10 +71,10 @@ export type Project = {
 
 const STATUS_OPTIONS = ['DRAFT', 'PENDING', 'APPROVED'] as const;
 
-function ProjectCard({ project, userInfo, handleLike, isDarkMode, show_status, show_team = true, onStatusChange, onStarredChange, isAdmin }: {
+function ProjectCard({ project, userInfo, handleVote, isDarkMode, show_status, show_team = true, onStatusChange, onStarredChange, isAdmin }: {
   project: Project;
   userInfo: any;
-  handleLike: (e: React.MouseEvent, projectId: string, isLiked: boolean) => void;
+  handleVote: (projectId: string, voteType: "UPVOTE" | "DOWNVOTE" | null) => Promise<void>;
   isDarkMode: boolean;
   show_status: boolean;
   show_team?: boolean;
@@ -220,34 +220,12 @@ function ProjectCard({ project, userInfo, handleLike, isDarkMode, show_status, s
               Launched on {new Date(project.startDate).toLocaleDateString()}
             </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={(e) => {
-                handleLike(
-                  e,
-                  project.id,
-                  project.likes.some(
-                    (like) => like.hackerId === userInfo?.id
-                  )
-                );
-              }}
-              className="p-2 -m-2 flex items-center space-x-1 text-gray-600 hover:text-indigo-600 transition-colors active:scale-95 touch-manipulation"
-              aria-label={`Like project ${project.title}`}
-            >
-              <div className="relative">
-                {project.likes.some(
-                  (like) => like.hackerId === userInfo?.id
-                ) ? (
-                  <HeartIconSolid className="h-7 w-7 text-indigo-600" />
-                ) : (
-                  <HeartIcon className="h-7 w-7" />
-                )}
-                {/* <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-sm">
-                  {project.likes.length}
-                </span> */}
-              </div>
-            </button>
-          </div>
+          <VoteButtons
+            projectId={project.id}
+            votes={project.votes}
+            userInfo={userInfo}
+            onVote={handleVote}
+          />
         </div>
 
         <Link href={`/projects/${project.id}`}>
@@ -527,47 +505,84 @@ export default function ProjectGrid({
     fetchProjects();
   }, [statusFilter]);
 
-  const handleLike = async (
-    e: React.MouseEvent,
+  const handleVote = async (
     projectId: string,
-    isLiked: boolean
+    voteType: "UPVOTE" | "DOWNVOTE" | null
   ) => {
-    e.preventDefault(); // Prevent navigation
     if (!user) {
-      alert("Please sign in to like projects");
+      alert("Please sign in to vote on projects");
       return;
     }
 
     try {
-      const response = await fetch(`/api/projects/${projectId}/like`, {
-        method: isLiked ? "DELETE" : "POST",
-      });
+      if (voteType === null) {
+        // Remove vote
+        const response = await fetch(`/api/projects/${projectId}/vote`, {
+          method: "DELETE",
+        });
 
-      if (response.ok) {
-        setProjects(
-          projects.map((project) => {
-            if (project.id === projectId) {
-              return {
-                ...project,
-                likes: isLiked
-                  ? project.likes.filter(
-                      (like) => like.hackerId !== userInfo?.id
-                    )
-                  : [
-                      ...project.likes,
-                      {
-                        hackerId: userInfo?.id || '',
-                        createdAt: new Date().toISOString(),
-                      },
-                    ],
-              };
-            }
-            return project;
-          })
-        );
+        if (response.ok) {
+          setProjects(
+            projects.map((project) => {
+              if (project.id === projectId) {
+                return {
+                  ...project,
+                  votes: project.votes.filter(
+                    (vote) => vote.hackerId !== userInfo?.id
+                  ),
+                };
+              }
+              return project;
+            })
+          );
+        }
+      } else {
+        // Add or update vote
+        const response = await fetch(`/api/projects/${projectId}/vote`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ voteType }),
+        });
+
+        if (response.ok) {
+          setProjects(
+            projects.map((project) => {
+              if (project.id === projectId) {
+                const existingVoteIndex = project.votes.findIndex(
+                  (vote) => vote.hackerId === userInfo?.id
+                );
+                
+                let updatedVotes = [...project.votes];
+                
+                if (existingVoteIndex !== -1) {
+                  // Update existing vote
+                  updatedVotes[existingVoteIndex] = {
+                    ...updatedVotes[existingVoteIndex],
+                    voteType,
+                  };
+                } else {
+                  // Add new vote
+                  updatedVotes.push({
+                    hackerId: userInfo?.id || '',
+                    voteType,
+                    createdAt: new Date().toISOString(),
+                  });
+                }
+
+                return {
+                  ...project,
+                  votes: updatedVotes,
+                };
+              }
+              return project;
+            })
+          );
+        }
       }
     } catch (error) {
-      console.error("Error toggling like:", error);
+      console.error("Error toggling vote:", error);
     }
   };
 
@@ -654,7 +669,7 @@ export default function ProjectGrid({
             key={project.id}
             project={project}
             userInfo={userInfo}
-            handleLike={handleLike}
+            handleVote={handleVote}
             isDarkMode={isDarkMode}
             show_status={show_status}
             show_team={show_team}

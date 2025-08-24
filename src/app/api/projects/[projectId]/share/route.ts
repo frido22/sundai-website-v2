@@ -83,9 +83,10 @@ export async function POST(
             url: true,
           },
         },
-        likes: {
+        votes: {
           select: {
             hackerId: true,
+            voteType: true,
             createdAt: true,
           },
         },
@@ -137,9 +138,10 @@ export async function POST(
       is_starred: false,
       is_broken: false,
       thumbnail: project.thumbnail,
-      likes: project.likes.map(like => ({
-        hackerId: like.hackerId,
-        createdAt: like.createdAt.toISOString(),
+      votes: project.votes.map(vote => ({
+        hackerId: vote.hackerId,
+        voteType: vote.voteType,
+        createdAt: vote.createdAt.toISOString(),
       })),
     };
 

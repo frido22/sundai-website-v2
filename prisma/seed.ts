@@ -6,7 +6,7 @@ async function main() {
   // Clean up existing data
   await prisma.attendance.deleteMany({});
   await prisma.projectToParticipant.deleteMany({});
-  await prisma.projectLike.deleteMany({});
+  await prisma.projectVote.deleteMany({});
   await prisma.domainTag.deleteMany({});
   await prisma.techTag.deleteMany({});
   await prisma.project.deleteMany({});
@@ -42,6 +42,15 @@ async function main() {
         role: Role.ADMIN,
         bio: "Co-founder of Sundai Club",
         email: "sam@sundai.club",
+      },
+    }),
+    prisma.hacker.create({
+      data: {
+        name: "Your Name", // Replace with your actual name
+        clerkId: "user_31kjGQORvOzL6Tqqrh9kGd9lGg9", // Your actual Clerk ID from the logs
+        role: Role.ADMIN,
+        bio: "Developer",
+        email: "your.email@example.com", // Replace with your email
       },
     }),
     prisma.hacker.create({
@@ -210,11 +219,12 @@ async function main() {
             ],
           })),
         },
-        likes: {
+        votes: {
           create: users
-            .filter(() => Math.random() > 0.5)
+            .filter(() => Math.random() > 0.3)
             .map((user) => ({
               hackerId: user.id,
+              voteType: Math.random() > 0.7 ? "DOWNVOTE" : "UPVOTE",
             })),
         },
         domainTags: {

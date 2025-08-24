@@ -4,8 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useUserContext } from "../../contexts/UserContext";
-import { HeartIcon } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartIconSolid, ShareIcon } from "@heroicons/react/24/solid";
+import { ShareIcon } from "@heroicons/react/24/solid";
+import VoteButtons from "../../components/VoteButtons";
 import { useTheme } from "../../contexts/ThemeContext";
 import ReactMarkdown from 'react-markdown';
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/solid";
@@ -20,8 +20,8 @@ export default function ProjectDetail() {
   const { userInfo } = useUserContext();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  const [userVote, setUserVote] = useState<"UPVOTE" | "DOWNVOTE" | null>(null);
+  const [voteCount, setVoteCount] = useState({ upvotes: 0, downvotes: 0, net: 0 });
   const { isDarkMode } = useTheme();
   const [isProjectDraft, setIsProjectDraft] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -56,8 +56,12 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     if (project && userInfo) {
-      setIsLiked(project.likes.some((like) => like.hackerId === userInfo.id));
-      setLikeCount(project.likes.length);
+      const vote = project.votes.find((vote) => vote.hackerId === userInfo.id);
+      setUserVote(vote?.voteType || null);
+      
+      const upvotes = project.votes.filter(v => v.voteType === "UPVOTE").length;
+      const downvotes = project.votes.filter(v => v.voteType === "DOWNVOTE").length;
+      setVoteCount({ upvotes, downvotes, net: upvotes - downvotes });
     }
   }, [project, userInfo]);
 
@@ -67,23 +71,56 @@ export default function ProjectDetail() {
     }
   }, [project]);
 
-  const handleLike = async () => {
+  const handleVote = async (
+    projectId: string,
+    voteType: "UPVOTE" | "DOWNVOTE" | null
+  ) => {
     if (!userInfo) {
-      alert("Please sign in to like projects");
+      alert("Please sign in to vote on projects");
       return;
     }
 
     try {
-      const response = await fetch(`/api/projects/${project?.id}/like`, {
-        method: isLiked ? "DELETE" : "POST",
-      });
+      if (voteType === null) {
+        // Remove vote
+        const response = await fetch(`/api/projects/${projectId}/vote`, {
+          method: "DELETE",
+        });
 
-      if (response.ok) {
-        setIsLiked(!isLiked);
-        setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+        if (response.ok) {
+          setUserVote(null);
+          const upvotes = userVote === "UPVOTE" ? voteCount.upvotes - 1 : voteCount.upvotes;
+          const downvotes = userVote === "DOWNVOTE" ? voteCount.downvotes - 1 : voteCount.downvotes;
+          setVoteCount({ upvotes, downvotes, net: upvotes - downvotes });
+        }
+      } else {
+        // Add or update vote
+        const response = await fetch(`/api/projects/${projectId}/vote`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ voteType }),
+        });
+
+        if (response.ok) {
+          let upvotes = voteCount.upvotes;
+          let downvotes = voteCount.downvotes;
+
+          // Remove old vote counts
+          if (userVote === "UPVOTE") upvotes--;
+          if (userVote === "DOWNVOTE") downvotes--;
+
+          // Add new vote counts
+          if (voteType === "UPVOTE") upvotes++;
+          if (voteType === "DOWNVOTE") downvotes++;
+
+          setUserVote(voteType);
+          setVoteCount({ upvotes, downvotes, net: upvotes - downvotes });
+        }
       }
     } catch (error) {
-      console.error("Error toggling like:", error);
+      console.error("Error toggling vote:", error);
     }
   };
 
@@ -231,17 +268,15 @@ export default function ProjectDetail() {
                   </div>
                 </div>
                 <div className="mt-4 md:mt-0">
-                  <button
-                    onClick={handleLike}
-                    className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full hover:bg-white/30 transition-colors"
-                  >
-                    {isLiked ? (
-                      <HeartIconSolid className="h-6 w-6 text-red-500" />
-                    ) : (
-                      <HeartIcon className="h-6 w-6 text-white" />
-                    )}
-                    <span className="text-lg">{likeCount}</span>
-                  </button>
+                  <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-full">
+                    <VoteButtons
+                      projectId={project.id}
+                      votes={project.votes}
+                      userInfo={userInfo}
+                      onVote={handleVote}
+                      className="text-white"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

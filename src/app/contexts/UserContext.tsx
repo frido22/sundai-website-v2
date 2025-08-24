@@ -15,8 +15,9 @@ type UserContextType = {
     bio?: string | null;
     githubUrl?: string | null;
     phoneNumber?: string | null;
-    likes?: Array<{
+    votes?: Array<{
       projectId: string;
+      voteType: "UPVOTE" | "DOWNVOTE";
       createdAt: string;
     }>;
   } | null;
@@ -61,7 +62,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             bio: profileData.bio,
             githubUrl: profileData.githubUrl,
             phoneNumber: profileData.phoneNumber,
-            likes: profileData.likes,
+            votes: profileData.votes,
           });
         } catch (error) {
           console.error("Error fetching user info:", error);

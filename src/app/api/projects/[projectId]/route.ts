@@ -25,9 +25,10 @@ export async function GET(
             },
           },
         },
-        likes: {
+        votes: {
           select: {
             hackerId: true,
+            voteType: true,
             createdAt: true,
           },
         },
@@ -42,9 +43,10 @@ export async function GET(
 
     return NextResponse.json({
       ...project,
-      likes: project.likes.map((like) => ({
-        hackerId: like.hackerId,
-        createdAt: like.createdAt,
+      votes: project.votes.map((vote) => ({
+        hackerId: vote.hackerId,
+        voteType: vote.voteType,
+        createdAt: vote.createdAt,
       })),
     });
   } catch (error) {
@@ -76,7 +78,7 @@ export async function DELETE(
     const project = await prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
-        likes: true,
+        votes: true,
         participants: true,
       },
     });
@@ -95,8 +97,8 @@ export async function DELETE(
 
     // Delete related records first
     await prisma.$transaction([
-      // Delete likes
-      prisma.projectLike.deleteMany({
+      // Delete votes
+      prisma.projectVote.deleteMany({
         where: { projectId: params.projectId },
       }),
       // Delete participants

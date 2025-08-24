@@ -30,7 +30,7 @@ export async function sendNotification(
         // Check notification preferences based on type
         ...(type === "NEW_PROJECT" && { notifyNewProjects: true }),
         ...(type === "PROJECT_UPDATE" && { notifyProjectUpdates: true }),
-        ...(type === "NEW_LIKE" && { notifyLikes: true }),
+        ...(type === "NEW_VOTE" && { notifyVotes: true }),
         ...(type === "NEW_MEMBER" && { notifyNewMembers: true }),
       },
     });
