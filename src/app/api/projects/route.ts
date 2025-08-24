@@ -49,6 +49,13 @@ export async function GET(req: Request) {
             createdAt: true,
           },
         },
+        votes: {
+          select: {
+            hackerId: true,
+            voteType: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: [
         {
@@ -66,6 +73,11 @@ export async function GET(req: Request) {
         likes: project.likes.map((like) => ({
           hackerId: like.hackerId,
           createdAt: like.createdAt,
+        })),
+        votes: project.votes.map((vote) => ({
+          hackerId: vote.hackerId,
+          voteType: vote.voteType,
+          createdAt: vote.createdAt,
         })),
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
