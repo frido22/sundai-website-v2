@@ -12,6 +12,7 @@ import { ChevronUpDownIcon } from '@heroicons/react/24/solid';
 import { toast } from 'react-hot-toast';
 import ProjectSearch from "./ProjectSearch";
 import { swapFirstLetters } from "../utils/nameUtils";
+import VoteButtons from "./VoteButtons";
 
 export type Project = {
   id: string;
@@ -63,6 +64,11 @@ export type Project = {
   endDate?: Date | null;
   likes: Array<{
     hackerId: string;
+    createdAt: string;
+  }>;
+  votes: Array<{
+    hackerId: string;
+    voteType: "UPVOTE" | "DOWNVOTE";
     createdAt: string;
   }>;
   createdAt: string;
@@ -221,32 +227,12 @@ function ProjectCard({ project, userInfo, handleLike, isDarkMode, show_status, s
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={(e) => {
-                handleLike(
-                  e,
-                  project.id,
-                  project.likes.some(
-                    (like) => like.hackerId === userInfo?.id
-                  )
-                );
-              }}
-              className="p-2 -m-2 flex items-center space-x-1 text-gray-600 hover:text-indigo-600 transition-colors active:scale-95 touch-manipulation"
-              aria-label={`Like project ${project.title}`}
-            >
-              <div className="relative">
-                {project.likes.some(
-                  (like) => like.hackerId === userInfo?.id
-                ) ? (
-                  <HeartIconSolid className="h-7 w-7 text-indigo-600" />
-                ) : (
-                  <HeartIcon className="h-7 w-7" />
-                )}
-                {/* <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-sm">
-                  {project.likes.length}
-                </span> */}
-              </div>
-            </button>
+            <VoteButtons
+              projectId={project.id}
+              votes={project.votes || []}
+              userInfo={userInfo}
+              onVote={handleVote}
+            />
           </div>
         </div>
 
@@ -568,6 +554,72 @@ export default function ProjectGrid({
       }
     } catch (error) {
       console.error("Error toggling like:", error);
+    }
+  };
+
+  const handleVote = async (
+    projectId: string,
+    voteType: "UPVOTE" | "DOWNVOTE" | null
+  ) => {
+    if (!user) {
+      alert("Please sign in to vote on projects");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/vote`, {
+        method: voteType ? "POST" : "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: voteType ? JSON.stringify({ voteType }) : undefined,
+      });
+
+      if (response.ok) {
+        setProjects(
+          projects.map((project) => {
+            if (project.id === projectId) {
+              const currentUserVote = project.votes?.find(
+                (vote) => vote.hackerId === userInfo?.id
+              );
+              
+              let newVotes = project.votes || [];
+              
+              if (voteType === null) {
+                // Remove vote
+                newVotes = newVotes.filter(
+                  (vote) => vote.hackerId !== userInfo?.id
+                );
+              } else if (currentUserVote) {
+                // Update existing vote
+                newVotes = newVotes.map((vote) =>
+                  vote.hackerId === userInfo?.id
+                    ? { ...vote, voteType }
+                    : vote
+                );
+              } else {
+                // Add new vote
+                newVotes = [
+                  ...newVotes,
+                  {
+                    hackerId: userInfo?.id || '',
+                    voteType,
+                    createdAt: new Date().toISOString(),
+                  },
+                ];
+              }
+              
+              return {
+                ...project,
+                votes: newVotes,
+              };
+            }
+            return project;
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Error voting on project:", error);
     }
   };
 
